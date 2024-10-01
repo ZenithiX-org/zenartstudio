@@ -1,0 +1,388 @@
+<html><head><base href="https://websim.creationengine.ai/paint-program/">
+<title>WebSim Paint Program with Shapes</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+  #canvas-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  #paint-canvas {
+    border: 1px solid #000;
+    background-color: #fff;
+    cursor: crosshair;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  #toolbar {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-items: center;
+  }
+  .tool-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  .tool-btn:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  #color-picker, #brush-size, #shape-select {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  #brush-size {
+    width: calc(100% - 10px);
+  }
+  #shape-select {
+    grid-column: span 2;
+  }
+  #clear-btn, #save-btn {
+    grid-column: span 2;
+  }
+</style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="pencil-btn" class="tool-btn">Pencil</button>
+    <button id="eraser-btn" class="tool-btn">Eraser</button>
+    <button id="fill-btn" class="tool-btn">Fill</button>
+    <button id="shape-btn" class="tool-btn">Shape</button>
+    <select id="shape-select">
+      <option value="rectangle">Rectangle</option>
+      <option value="circle">Circle</option>
+      <option value="triangle">Triangle</option>
+      <option value="star">Star</option>
+      <option value="heart">Heart</option>
+      <option value="hexagon">Hexagon</option>
+      <option value="octagon">Octagon</option>
+      <option value="diamond">Diamond</option>
+      <option value="arrow">Arrow</option>
+      <option value="cloud">Cloud</option>
+    </select>
+    <input type="color" id="color-picker" value="#000000">
+    <input type="number" id="brush-size" min="1" max="50" value="5">
+    <button id="clear-btn" class="tool-btn">Clear</button>
+    <button id="save-btn" class="tool-btn">Save</button>
+  </div>
+  <div id="canvas-container">
+    <canvas id="paint-canvas" width="800" height="600"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('paint-canvas');
+    const ctx = canvas.getContext('2d');
+    const pencilBtn = document.getElementById('pencil-btn');
+    const eraserBtn = document.getElementById('eraser-btn');
+    const fillBtn = document.getElementById('fill-btn');
+    const shapeBtn = document.getElementById('shape-btn');
+    const shapeSelect = document.getElementById('shape-select');
+    const colorPicker = document.getElementById('color-picker');
+    const brushSize = document.getElementById('brush-size');
+    const clearBtn = document.getElementById('clear-btn');
+    const saveBtn = document.getElementById('save-btn');
+
+    let isDrawing = false;
+    let currentTool = 'pencil';
+    let startX, startY;
+
+    function startPosition(e) {
+      isDrawing = true;
+      [startX, startY] = getMousePos(canvas, e);
+
+      if (currentTool === 'fill') {
+        floodFill(startX, startY, colorPicker.value);
+      } else if (currentTool === 'pencil' || currentTool === 'eraser') {
+        draw(e);
+      }
+    }
+
+    function endPosition() {
+      if (isDrawing && currentTool === 'shape') {
+        const [endX, endY] = getMousePos(canvas, event);
+        drawShape(startX, startY, endX, endY);
+      }
+      isDrawing = false;
+      ctx.beginPath();
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      if (currentTool !== 'pencil' && currentTool !== 'eraser') return;
+
+      ctx.lineWidth = brushSize.value;
+      ctx.lineCap = 'round';
+
+      if (currentTool === 'pencil') {
+        ctx.strokeStyle = colorPicker.value;
+      } else if (currentTool === 'eraser') {
+        ctx.strokeStyle = '#FFFFFF';
+      }
+
+      const [x, y] = getMousePos(canvas, e);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    function drawShape(startX, startY, endX, endY) {
+      ctx.strokeStyle = colorPicker.value;
+      ctx.fillStyle = colorPicker.value;
+      ctx.lineWidth = brushSize.value;
+
+      const width = endX - startX;
+      const height = endY - startY;
+      const centerX = startX + width / 2;
+      const centerY = startY + height / 2;
+
+      ctx.beginPath();
+
+      switch (shapeSelect.value) {
+        case 'rectangle':
+          ctx.rect(startX, startY, width, height);
+          break;
+        case 'circle':
+          ctx.arc(centerX, centerY, Math.abs(width) / 2, 0, 2 * Math.PI);
+          break;
+        case 'triangle':
+          ctx.moveTo(startX + width / 2, startY);
+          ctx.lineTo(startX, startY + height);
+          ctx.lineTo(endX, startY + height);
+          ctx.closePath();
+          break;
+        case 'star':
+          drawStar(centerX, centerY, 5, Math.abs(width) / 4, Math.abs(width) / 2);
+          break;
+        case 'heart':
+          drawHeart(centerX, centerY, Math.abs(width) / 2);
+          break;
+        case 'hexagon':
+          drawPolygon(centerX, centerY, 6, Math.abs(width) / 2);
+          break;
+        case 'octagon':
+          drawPolygon(centerX, centerY, 8, Math.abs(width) / 2);
+          break;
+        case 'diamond':
+          ctx.moveTo(centerX, startY);
+          ctx.lineTo(endX, centerY);
+          ctx.lineTo(centerX, endY);
+          ctx.lineTo(startX, centerY);
+          ctx.closePath();
+          break;
+        case 'arrow':
+          drawArrow(startX, startY, endX, endY);
+          break;
+        case 'cloud':
+          drawCloud(centerX, centerY, Math.abs(width) / 2, Math.abs(height) / 2);
+          break;
+      }
+
+      ctx.stroke();
+      ctx.fill();
+    }
+
+    function drawStar(cx, cy, spikes, innerRadius, outerRadius) {
+      let rot = Math.PI / 2 * 3;
+      let x = cx;
+      let y = cy;
+      let step = Math.PI / spikes;
+
+      ctx.moveTo(cx, cy - outerRadius);
+      for (let i = 0; i < spikes; i++) {
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+      }
+      ctx.lineTo(cx, cy - outerRadius);
+      ctx.closePath();
+    }
+
+    function drawHeart(x, y, size) {
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x - size / 2, y - size / 2, x - size, y + size / 3, x, y + size);
+      ctx.bezierCurveTo(x + size, y + size / 3, x + size / 2, y - size / 2, x, y);
+    }
+
+    function drawPolygon(x, y, sides, radius) {
+      ctx.moveTo(x + radius * Math.cos(0), y + radius * Math.sin(0));
+      for (let i = 1; i <= sides; i += 1) {
+        ctx.lineTo(x + radius * Math.cos(i * 2 * Math.PI / sides), y + radius * Math.sin(i * 2 * Math.PI / sides));
+      }
+      ctx.closePath();
+    }
+
+    function drawArrow(fromx, fromy, tox, toy) {
+      const headlen = 20;
+      const dx = tox - fromx;
+      const dy = toy - fromy;
+      const angle = Math.atan2(dy, dx);
+      ctx.moveTo(fromx, fromy);
+      ctx.lineTo(tox, toy);
+      ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(tox, toy);
+      ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+    }
+
+    function drawCloud(x, y, width, height) {
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x - width / 2, y - height / 2, x - width / 4, y - height, x + width / 4, y - height);
+      ctx.bezierCurveTo(x + width / 2, y - height, x + width / 2, y - height / 2, x + width / 4, y - height / 4);
+      ctx.bezierCurveTo(x + width, y - height / 4, x + width, y + height / 2, x + 3 * width / 4, y + height / 2);
+      ctx.bezierCurveTo(x + width / 2, y + height * 3 / 4, x, y + height * 3 / 4, x, y + height / 2);
+      ctx.closePath();
+    }
+
+    function floodFill(x, y, fillColor) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const targetColor = getPixel(imageData, x, y);
+      
+      if (colorsMatch(targetColor, hexToRgb(fillColor))) return;
+
+      const pixelsToCheck = [x, y];
+      while (pixelsToCheck.length > 0) {
+        const y = pixelsToCheck.pop();
+        const x = pixelsToCheck.pop();
+
+        const currentColor = getPixel(imageData, x, y);
+        if (colorsMatch(currentColor, targetColor)) {
+          setPixel(imageData, x, y, hexToRgb(fillColor));
+
+          pixelsToCheck.push(x + 1, y);
+          pixelsToCheck.push(x - 1, y);
+          pixelsToCheck.push(x, y + 1);
+          pixelsToCheck.push(x, y - 1);
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function getPixel(imageData, x, y) {
+      if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) {
+        return [-1, -1, -1, -1];  // impossible color
+      } else {
+        const offset = (y * imageData.width + x) * 4;
+        return imageData.data.slice(offset, offset + 4);
+      }
+    }
+
+    function setPixel(imageData, x, y, color) {
+      const offset = (y * imageData.width + x) * 4;
+      imageData.data[offset] = color[0];
+      imageData.data[offset + 1] = color[1];
+      imageData.data[offset + 2] = color[2];
+      imageData.data[offset + 3] = 255;
+    }
+
+    function colorsMatch(a, b) {
+      return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+    }
+
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.slice(1), 16);
+      return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255, 255];
+    }
+
+    function getMousePos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      return [
+        evt.clientX - rect.left,
+        evt.clientY - rect.top
+      ];
+    }
+
+    canvas.addEventListener('mousedown', startPosition);
+    canvas.addEventListener('mouseup', endPosition);
+    canvas.addEventListener('mousemove', draw);
+
+    pencilBtn.addEventListener('click', () => currentTool = 'pencil');
+    eraserBtn.addEventListener('click', () => currentTool = 'eraser');
+    fillBtn.addEventListener('click', () => currentTool = 'fill');
+    shapeBtn.addEventListener('click', () => currentTool = 'shape');
+
+    clearBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = 'paint-masterpiece.png';
+      link.click();
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      canvas.dispatchEvent(mouseEvent);
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      const mouseEvent = new MouseEvent('mouseup', {});
+      canvas.dispatchEvent(mouseEvent);
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      canvas.dispatchEvent(mouseEvent);
+    });
+
+    document.body.addEventListener('touchstart', (e) => {
+      if (e.target === canvas) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    document.body.addEventListener('touchend', (e) => {
+      if (e.target === canvas) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    document.body.addEventListener('touchmove', (e) => {
+      if (e.target === canvas) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+  </script>
+</body></html>
